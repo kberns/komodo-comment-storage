@@ -30,9 +30,12 @@ mysql_select_db($database,$link);mysql_set_charset('utf8');
 $password='fs3SadhGFar4gd21';$username='sql';
 
 #create sql table if missing
-$val = mysql_query('select 1 from `komodo_comments` LIMIT 1');
-if($val === FALSE){
-    mysql_query('CREATE TABLE IF NOT EXISTS komodo_comments(
+
+$num=mysql_result(mysql_query("select num from komodo_comments_settings where apicode='$myapikey' and uniid='$myidkey' LIMIT 1"),0,'num');
+if(empty($num)){$num=1;
+    $val = mysql_query('select 1 from komodo_comments LIMIT 1');
+    if($val === FALSE){
+        mysql_query('CREATE TABLE IF NOT EXISTS komodo_comments(
 id varchar(255),
 PRIMARY KEY(id),
 uniid varchar(255),
@@ -43,11 +46,15 @@ datetime TIMESTAMP ON UPDATE CURRENT_TIMESTAMP) ENGINE=MyISAM  CHARACTER SET=utf
     mysql_query('CREATE TABLE IF NOT EXISTS komodo_comments_settings(
 uniid varchar(255),
 PRIMARY KEY(uniid),
+num int unsigned,
 apicode varchar(255),
 `mode` tinyint(3),
 datetime TIMESTAMP ON UPDATE CURRENT_TIMESTAMP) ENGINE=MyISAM  CHARACTER SET=utf8 COLLATE=utf8_general_ci;') or die(mysql_error());
-
-mysql_query("INSERT INTO komodo_comments_settings (uniid,apicode,`mode`) VALUES('$myidkey','$myapikey','1')");
+    mysql_query("INSERT INTO komodo_comments_settings (uniid,apicode,`mode`) VALUES('$myidkey','$myapikey','1')");
+    }else{ #update to latest version
+    mysql_query('ALTER TABLE komodo_comments_settings ADD num INT UNSIGNED AFTER mode;');
+  }
+  mysql_query("update komodo_comments_settings set num=2 where apicode='$myapikey' and uniid='$myidkey'");
 }
 
 #load the comment sent by komodo js script
@@ -55,10 +62,19 @@ $t=$_POST['txt'];
 $str=urldecode($t);
 
 #regex match
-$re = '/\x{263A}(\S*)\s([^\x{263B}\x{263A}]*)\x{263B}/u'; 
+$re = '/\x{263A}(\S*)\s?([^\x{263B}\x{263A}]*)\x{263B}\s?/u'; 
 preg_match($re, $str, $matches);
 $commentid=addslashes($matches[1]);
 $comment=addslashes($matches[2]);
+
+#number the note if no commentid set
+if(empty($commentid)){
+    $commentid=$num;
+    ++$num;
+    echo "update komodo_comments_settings set num=$num where apicode='$myapikey' and uniid='$myidkey'";
+    mysql_query("update komodo_comments_settings set num=$num where apicode='$myapikey' and uniid='$myidkey'");
+}
+
 #api security
 $sql=mysql_query('SELECT apicode FROM komodo_comments_settings where apicode="'.$apikey.'" and uniid="'.$myid.'";');
 $codecheck=mysql_result($sql,0,'apicode');
@@ -69,10 +85,10 @@ $sql=mysql_query('SELECT * FROM komodo_comments where id="'.$commentid.'" and un
 $oldnote=mysql_result($sql,0,'txt');
 
 if(empty($comment)){ #toggle note on
-    echo"☺$commentid $oldnote ☻";
+    echo"☺$commentid $oldnote"."☻";
 }else{#put note into sql database
     if(empty($oldnote)){mysql_query("INSERT INTO komodo_comments (txt,uniid,id) VALUES('$comment','$myid','$commentid')");}
-    else{mysql_query('update komodo_comments set txt="'.$comment.'" where id="'.$commentid.'" and uniid="'.$myid.'"');}
+    else{mysql_query("update komodo_comments set txt='$comment' where id='$commentid' and uniid='$myid'");}
     echo"☺$commentid ☻"; #toggle note off
 }
 mysql_close($link);
