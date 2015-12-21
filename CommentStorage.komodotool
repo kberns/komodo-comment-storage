@@ -1,11 +1,11 @@
 {
   "keyboard_shortcut": "Ctrl+Alt+Z", 
-  "name": "CommentToggle", 
+  "name": "CommentStorage", 
   "language": "JavaScript", 
   "trigger_enabled": false, 
   "value": [
-    "/*\u263aKomodo-Comment-Toggler", 
-    " * Store comments in sql database", 
+    "/*\u263aKomodo-Comment-Storage", 
+    " * Store comments in sql database, and toggle comments on/off in editor content.", 
     " * Scimos javascript macro developed to be used in Komodo edit", 
     " * Format: \u263aNo-space-123ABC-ID The Text\\nNew line text\u263b", 
     " * Type:  On Demand", 
