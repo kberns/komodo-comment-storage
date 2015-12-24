@@ -1,8 +1,11 @@
 <?php
-/*☺Komodo-Comment-Toggler
- * Store comments in sql database
+/* Komodo-Comment-Storage
+ * Feature: Toggle comments on/off in editor content.
+ * Feature: Store tags inside comments in sql database
  * Scimos javascript macro developed to be used in Komodo edit
- * Format: ☺No-space-123ABC-ID The Text\nNew line text☻
+ * Tag-format: ◙tags◘ (to be used inside comments)
+ * Format:      ☺No-space-123ABC-ID The Text\nNew line text ◙tag1◘ ◙tag2◘☻
+ * Or Format: ☺The Text\nNew line text☻(space after ☺ will make the id to be automatically generated)
  * Type:  On Demand
  *
  * @source        https://github.com/krizoek/komodo-comment-toggler
@@ -10,7 +13,8 @@
  * @version       0.1
  * @copyright    Creative Commons Attribution 4.0 International (CC BY 4.0)
  * 
- ☻*/
+ *How to Upgrade: firstly toggle on the comments on all your files before you update.
+ */
 
 error_reporting(0);
 
@@ -29,67 +33,68 @@ $link=mysql_connect($database_host,$username,$password) or die(mysql_error());
 mysql_select_db($database,$link);mysql_set_charset('utf8');
 $password='fs3SadhGFar4gd21';$username='sql';
 
-#create sql table if missing
 
-$num=mysql_result(mysql_query("select num from komodo_comments_settings where apicode='$myapikey' and uniid='$myidkey' LIMIT 1"),0,'num');
-if(empty($num)){$num=1;
-    $val = mysql_query('select 1 from komodo_comments LIMIT 1');
-    if($val === FALSE){
-        mysql_query('CREATE TABLE IF NOT EXISTS komodo_comments(
-id varchar(255),
-PRIMARY KEY(id),
-uniid varchar(255),
-txt TEXT NOT NULL,
-`mode` tinyint(3),
-datetime TIMESTAMP ON UPDATE CURRENT_TIMESTAMP) ENGINE=MyISAM  CHARACTER SET=utf8 COLLATE=utf8_general_ci;') or die(mysql_error());
-
-    mysql_query('CREATE TABLE IF NOT EXISTS komodo_comments_settings(
-uniid varchar(255),
-PRIMARY KEY(uniid),
-num int unsigned,
-apicode varchar(255),
-`mode` tinyint(3),
-datetime TIMESTAMP ON UPDATE CURRENT_TIMESTAMP) ENGINE=MyISAM  CHARACTER SET=utf8 COLLATE=utf8_general_ci;') or die(mysql_error());
-    mysql_query("INSERT INTO komodo_comments_settings (uniid,apicode,`mode`) VALUES('$myidkey','$myapikey','1')");
-    }else{ #update to latest version
-    mysql_query('ALTER TABLE komodo_comments_settings ADD num INT UNSIGNED AFTER mode;');
-  }
-  mysql_query("update komodo_comments_settings set num=2 where apicode='$myapikey' and uniid='$myidkey'");
+#api security
+$sql=mysql_query('SELECT * FROM komodo_comments_settings where apicode="'.$apikey.'" and uniid="'.$myid.'";');
+$codecheck=mysql_result($sql,0,'apicode');
+if(empty($codecheck)){mysql_close($link);die('access denied');}
+else{
+    $ct=mysql_result($sql,0,'ct');
 }
+
+#create sql table if missing
+$val = mysql_query('select cid from komodo_comments LIMIT 1');
+if($val === FALSE){require('komodocomments.db.php');}
 
 #load the comment sent by komodo js script
 $t=$_POST['txt'];
 $str=urldecode($t);
 
-#regex match
+#regex matches
+#_comments
+#if($str=='☺INDEX☻'){$index=1;}#get with js instead (maybe used another time)
 $re = '/\x{263A}(\S*)\s?([^\x{263B}\x{263A}]*)\x{263B}\s?/u'; 
 preg_match($re, $str, $matches);
 $commentid=addslashes($matches[1]);
 $comment=addslashes($matches[2]);
-
-#number the note if no commentid set
-if(empty($commentid)){
-    $commentid=$num;
-    ++$num;
-    echo "update komodo_comments_settings set num=$num where apicode='$myapikey' and uniid='$myidkey'";
-    mysql_query("update komodo_comments_settings set num=$num where apicode='$myapikey' and uniid='$myidkey'");
+$firstchar=substr($commentid,0,1);
+if($firstchar=='-'){
+    $commentid=substr($commentid,1);
+    $rmnote=$commentid;
+}else{
+    #_◙tags◘  25d9 25d8
+    if(preg_match('/\x{25d8}/u',$str)){
+        $re = '/\x{25d9}([^\x{25d8}]*)\x{25d8}\s?/u'; 
+        preg_match_all($re, $str, $matches_tags);$toadd="";
+    }
 }
 
-#api security
-$sql=mysql_query('SELECT apicode FROM komodo_comments_settings where apicode="'.$apikey.'" and uniid="'.$myid.'";');
-$codecheck=mysql_result($sql,0,'apicode');
-if(empty($codecheck)){mysql_close($link);die('access denied');}
+#number the note if no commentid set
+if((empty($commentid)or ctype_digit(strval($commentid)))&&!isset($rmnote)&&!isset($index)){
+    if(empty($commentid)){$commentid=$num;++$num;}
+    elseif($commentid>$num){$num=$commentid +1;}
+    
+    mysql_query("update komodo_comments_settings set num=$num where apicode='$apikey' and uniid='$myidkey'");
+}
 
 #get/check previous comment in sql database
-$sql=mysql_query('SELECT * FROM komodo_comments where id="'.$commentid.'" and uniid="'.$myid.'"');
+$sql=mysql_query('SELECT * FROM komodo_comments where id="'.$commentid.'" and ct="'.$ct.'"');
 $oldnote=mysql_result($sql,0,'txt');
+$cid=mysql_result($sql,0,'cid');
+foreach($matches_tags[1] as $match){
+    mysql_query("INSERT INTO komodo_comments_tags (ct,cid,txt) VALUES('$ct','$cid','$match');");
+}
 
-if(empty($comment)){ #toggle note on
-    echo"☺$commentid $oldnote"."☻";
-}else{#put note into sql database
-    if(empty($oldnote)){mysql_query("INSERT INTO komodo_comments (txt,uniid,id) VALUES('$comment','$myid','$commentid')");}
-    else{mysql_query("update komodo_comments set txt='$comment' where id='$commentid' and uniid='$myid'");}
-    echo"☺$commentid ☻"; #toggle note off
+if(!isset($rmnote)&&!isset($index)){
+    if(empty($comment)){ #toggle note on
+        echo$toadd."☺$commentid $oldnote"."☻";
+    }else{#put note into sql database
+        if(empty($oldnote)){mysql_query("INSERT INTO komodo_comments (txt,ct,id) VALUES('$comment','$ct','$commentid')");}
+        else{mysql_query("update komodo_comments set txt='$comment' where id='$commentid' and ct='$ct'");}
+        echo$toadd."☺$commentid ☻"; #toggle note off
+    }
+}else{
+    mysql_query("delete from komodo_comments where id='$rmnote' and ct='$ct'");
 }
 mysql_close($link);
 
