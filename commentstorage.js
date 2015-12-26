@@ -18,6 +18,7 @@ var myid="X1";
 var myapikey="SKDFK89338fnASDkf3";
 var serverurl="http://127.0.0.1/";
 
+
 var view = ko.views.manager.currentView;
 var scimoz = view.scimoz;
 var currentPos = scimoz.currentPos;
@@ -28,27 +29,43 @@ var text = scimoz.getTextRange(lineStartPos, lineEndPos);
 var alltext =  scimoz.text;
 var regexp = /\u263A[^\u263A\u263B]*\u263B/gi;
 var matches_array = alltext.match(regexp);
-
-var b= matches_array.length,index,t,params,xhttp,randnum,geturl;
+function request_handler(myid,myapikey,lineStartPos,t) {
+    var xht;
+    xht = new XMLHttpRequest();
+    xht.timeout = 4000;
+    xht.onreadystatechange = function(index) {
+      if (xht.readyState == 4) {
+        if (xht.status == 200 || window.location.href.indexOf("http")==-1) {
+            console.log(t+" REPLACE WITH: "+xht.responseText);
+            scimoz.text = scimoz.text.replace(t, xht.responseText);
+        } else {
+            console.error(xht.statusText);
+          }
+      }
+    };
+    randnum=Math.floor((Math.random() * 9999999999) + 12000);
+    geturl=serverurl + "komodo.php?id="+ myid + "&key=" + myapikey + "&r=" + randnum + "&l=" + lineStartPos;
+    params="txt=" + encodeURIComponent(t);
+    xht.open("POST", geturl, true);
+    xht.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+    xht.setRequestHeader("Content-length", params.length);
+    xht.setRequestHeader("Connection", "close");
+    
+    xht.onerror = function (e) {
+        console.error(xht.statusText);
+      };
+    
+    xht.send(params); 
+}
+var b= matches_array.length,index,t,params,randnum,geturl,htpn;
+var htp = {}
 for (index = 0; index < b; ++index) {
     t=matches_array[index];
+    
     if(typeof(t)!== 'undefined'){
         if (t.length <= 3) {
          }else{
-            xhttp = new XMLHttpRequest();
-            xhttp.onreadystatechange = function() {
-              if (xhttp.readyState == 4 && xhttp.status == 200) {
-                scimoz.text = scimoz.text.replace(t, xhttp.responseText);
-              }
-            };
-            randnum=Math.floor((Math.random() * 9999999999) + 1200);
-            geturl=serverurl + "komodo.php?id="+ myid + "&key=" + myapikey + "&r=" + randnum + "&l=" + lineStartPos;
-            params="txt=" + encodeURIComponent(t);
-            xhttp.open("POST", geturl, true);
-            xhttp.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
-            xhttp.setRequestHeader("Content-length", params.length);
-            xhttp.setRequestHeader("Connection", "close");
-            xhttp.send(params);   
+            request_handler(myid,myapikey,lineStartPos,t);
         }
     }
 }
