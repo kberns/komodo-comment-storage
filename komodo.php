@@ -21,6 +21,8 @@ error_reporting(0);
 $myapikey="SKDFK89338fnASDkf3"; #initial key
 $myidkey="X1"; #initial id
 
+if(!isset($securityforkomodo)){ #check if using komodofilebrowser.php
+    
 $apikey=addslashes($_GET['key']); #apikey from komodo
 #getting the id matched with the comments. (for generating multiple id's on single server)
 $myid=addslashes($_GET['id']); #my id from komodo
@@ -33,14 +35,15 @@ $link=mysql_connect($database_host,$username,$password) or die(mysql_error());
 mysql_select_db($database,$link);mysql_set_charset('utf8');
 $password='fs3SadhGFar4gd21';$username='sql';
 
-
 #api security
 $sql=mysql_query('SELECT * FROM komodo_comments_settings where apicode="'.$apikey.'" and uniid="'.$myid.'";');
-$codecheck=mysql_result($sql,0,'apicode');
+$codecheck=mysql_result($sql,0,'apicode');$numcheck=mysql_result($sql,0,'num');
 if(empty($codecheck)){mysql_close($link);die('access denied');}
 else{
     $ct=mysql_result($sql,0,'ct');
-}
+}                                                                               
+
+
 
 #create sql table if missing
 $val = mysql_query('select cid from komodo_comments LIMIT 1');
@@ -48,7 +51,9 @@ if($val === FALSE){require('komodocomments.db.php');}
 
 #load the comment sent by komodo js script
 $t=$_POST['txt'];
+if(empty($t)){$t=$_GET['txt'];}
 $str=urldecode($t);
+
 
 #regex matches
 #_comments
@@ -71,10 +76,11 @@ if($firstchar=='-'){
 
 #number the note if no commentid set
 if((empty($commentid)or ctype_digit(strval($commentid)))&&!isset($rmnote)&&!isset($index)){
-    if(empty($commentid)){$commentid=$num;++$num;}
-    elseif($commentid>$num){$num=$commentid +1;}
-    
-    mysql_query("update komodo_comments_settings set num=$num where apicode='$apikey' and uniid='$myidkey'");
+    if(empty($commentid)){$num=$numcheck;++$num;$commentid=$num;}
+    elseif($commentid>$numcheck){$num=$commentid +1;}
+    if($numcheck<$num){
+        mysql_query("update komodo_comments_settings set num=$num where apicode='$apikey' and uniid='$myidkey'");
+    }
 }
 
 #get/check previous comment in sql database
@@ -87,15 +93,16 @@ foreach($matches_tags[1] as $match){
 
 if(!isset($rmnote)&&!isset($index)){
     if(empty($comment)){ #toggle note on
-        echo$toadd."☺$commentid $oldnote"."☻";
+        echo $toadd."☺$commentid $oldnote"."☻";
     }else{#put note into sql database
         if(empty($oldnote)){mysql_query("INSERT INTO komodo_comments (txt,ct,id) VALUES('$comment','$ct','$commentid')");}
         else{mysql_query("update komodo_comments set txt='$comment' where id='$commentid' and ct='$ct'");}
-        echo$toadd."☺$commentid ☻"; #toggle note off
+        echo $toadd."☺$commentid ☻"; #toggle note off
     }
 }else{
     mysql_query("delete from komodo_comments where id='$rmnote' and ct='$ct'");
 }
 mysql_close($link);
 
+}
 ?>
