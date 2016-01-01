@@ -55,6 +55,8 @@ echo'<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/htm
   <div id="tree">
   
     <ul>';
+#following php code is released under gpl
+#copyright Kristoffer Bernssen
 error_reporting(0);
 $fileids=array();$dirids=array();
 function filedirs($dirstart,$level) {
@@ -177,6 +179,7 @@ if(isset($con)or isset($coff)){
     }
 }
 mysql_close($link);
+#php code is released under gpl
 echo'<div>Active node: <span id="echoActive">-</span></div>
 <p class="description">
     Cookie persistence is enabled here.<br>
@@ -193,35 +196,4 @@ echo'<div>Active node: <span id="echoActive">-</span></div>
 </body>
 </html>';
 
-
-/*
-echo'<li id="id1" title="Look, a tool tip!">item1 with key and tooltip
-      <li id="id2">item2
-      <li id="id3" class="folder">Folder with some children
-        <ul>
-          <li id="id3.1">Sub-item 3.1
-            <ul>
-              <li id="id3.1.1">Sub-item 3.1.1
-              <li id="id3.1.2">Sub-item 3.1.2
-            </ul>
-          <li id="id3.2">Sub-item 3.2
-            <ul>
-              <li id="id3.2.1">Sub-item 3.2.1
-              <li id="id3.2.2">Sub-item 3.2.2
-            </ul>
-        </ul>
-      <li id="id4" class="expanded">Document with some children (expanded on init)
-        <ul>
-          <li id="id4.1"  class="active focused">Sub-item 4.1 (active and focus on init)
-            <ul>
-              <li id="id4.1.1">Sub-item 4.1.1
-              <li id="id4.1.2">Sub-item 4.1.2
-            </ul>
-          <li id="id4.2">Sub-item 4.2
-            <ul>
-              <li id="id4.2.1">Sub-item 4.2.1
-              <li id="id4.2.2">Sub-item 4.2.2
-            </ul>
-        </ul>';
-*/
 ?>
