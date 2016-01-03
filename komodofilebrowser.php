@@ -119,6 +119,14 @@ if(isset($_GET['coff'])){$coff=1;}
 elseif(isset($_GET['con'])){$con=1;}
 if(isset($con)or isset($coff)){
     $securityforkomodo=1;require('komodo.php');
+    #create sql table if missing
+    $q2 = $db->prepare('select cid from komodo_comments LIMIT 2');
+    $q2->execute();
+    $check2 = $q2->fetchAll(PDO::FETCH_ASSOC);
+    $val=$check2[0]['cid'];
+    #$val = mysql_query('select cid from komodo_comments LIMIT 1');
+    if($val === FALSE){require('komodocomments.db.php');}
+
     $thefilesids=$_COOKIE['dynatree-select'];
     $thefilesids_a=explode(',',$thefilesids);
     $securityforkomodo=1;

@@ -31,22 +31,72 @@ $myid=addslashes($_GET['id']); #my id from komodo
 require('config.inc.php');
 
 #connect to sql database
-$link=mysql_connect($database_host,$username,$password) or die(mysql_error());
-mysql_select_db($database,$link);mysql_set_charset('utf8');
+/*$link=mysql_connect($database_host,$username,$password) or die(mysql_error());
+mysql_select_db($database,$link);mysql_set_charset('utf8');*/
+$db = new PDO('mysql:host='.$database_host.';dbname='.$database.';charset=utf8', ''.$username.'', ''.$password.'');
+$db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+$db->setAttribute(PDO::ATTR_ORACLE_NULLS, PDO::NULL_EMPTY_STRING);
+$db->setAttribute(PDO::ATTR_EMULATE_PREPARES, FALSE);
 $password='fs3SadhGFar4gd21';$username='sql';
 
 #api security
-$sql=mysql_query('SELECT * FROM komodo_comments_settings where apicode="'.$apikey.'" and uniid="'.$myid.'";');
-$codecheck=mysql_result($sql,0,'apicode');$numcheck=mysql_result($sql,0,'num');
-if(empty($codecheck)){mysql_close($link);die('access denied');}
+$q = $db->prepare('SELECT * FROM komodo_comments_settings where apicode=? and uniid=?;');
+$q->bindParam(1, $myapikey);
+$q->bindParam(2, $myidkey);
+$q->execute();
+$check = $q->fetchAll(PDO::FETCH_ASSOC);
+$codecheck=$check[0]['apicode'];$numcheck=$check[0]['num'];
+if(empty($codecheck)){unset($db);die('access denied');}#mysql_close($link);
 else{
-    $ct=mysql_result($sql,0,'ct');
-}                                                                               
+   #$ct=mysql_result($sql,0,'ct');
+   $ct=$check[0]['ct'];
+}
+#$sql=mysql_query('SELECT * FROM komodo_comments_settings where apicode="'.$apikey.'" and uniid="'.$myid.'";');
+#$codecheck=mysql_result($sql,0,'apicode');$numcheck=mysql_result($sql,0,'num');
+#if(empty($codecheck)){mysql_close($link);die('access denied');}
+#else{
+#   $ct=mysql_result($sql,0,'ct');
+#}                                                                               
 
-
+$stmt = $db->prepare("INSERT INTO komodo_comments_files (fid,file,filetype) VALUES (?,?,1) ON DUPLICATE KEY UPDATE file=?,filetype=1;");
+    $stmt->bindParam(1, $theid);
+    $stmt->bindParam(2, $thefile);
+    $stmt->bindParam(3, $theid);
+    
+    $stmt2 = $db->prepare("update komodo_comments_settings set num=? where apicode=? and uniid=?");
+    $stmt2->bindParam(1, $num);
+    $stmt2->bindParam(2, $apikey);
+    $stmt2->bindParam(3, $myidkey);
+    
+    $stmt3 = $db->prepare('SELECT * FROM komodo_comments where id=? and ct=?');
+    $stmt3->bindParam(1, $commentid);
+    $stmt3->bindParam(2, $ct);
+    
+    $stmt4 = $db->prepare("INSERT INTO komodo_comments (txt,ct,id) VALUES(?,?,?)");
+    $stmt4->bindParam(1, $comment);
+    $stmt4->bindParam(2, $ct);
+    $stmt4->bindParam(3, $commentid);
+    
+    $stmt5 = $db->prepare("update komodo_comments set txt=? where id=? and ct=?");
+    $stmt5->bindParam(1, $comment);
+    $stmt5->bindParam(2, $commentid);
+    $stmt5->bindParam(3, $ct);
+    
+    $stmt6 = $db->prepare("delete from komodo_comments where id=? and ct=?");
+    $stmt6->bindParam(1, $rmnote);
+    $stmt6->bindParam(2, $ct);
+    
+    $stmt7 = $db->prepare("INSERT INTO komodo_comments_tags (ct,cid,txt) VALUES(?,?,?);");
+    $stmt7->bindParam(1, $ct);
+    $stmt7->bindParam(2, $cid);
+    $stmt7->bindParam(3, $matchtag);
 
 #create sql table if missing
-$val = mysql_query('select cid from komodo_comments LIMIT 1');
+$q2 = $db->prepare('select cid from komodo_comments LIMIT 2');
+$q2->execute();
+$check2 = $q2->fetchAll(PDO::FETCH_ASSOC);
+$val=$check2[0]['cid'];
+#$val = mysql_query('select cid from komodo_comments LIMIT 1');
 if($val === FALSE){require('komodocomments.db.php');}
 
 #load the comment sent by komodo js script
@@ -79,30 +129,69 @@ if((empty($commentid)or ctype_digit(strval($commentid)))&&!isset($rmnote)&&!isse
     if(empty($commentid)){$num=$numcheck;++$num;$commentid=$num;}
     elseif($commentid>$numcheck){$num=$commentid +1;}
     if($numcheck<$num){
-        mysql_query("update komodo_comments_settings set num=$num where apicode='$apikey' and uniid='$myidkey'");
+        #mysql_query("update komodo_comments_settings set num=$num where apicode='$apikey' and uniid='$myidkey'");
+        try {
+            $stmt2 ->execute();
+        } catch(PDOException $ex) {
+          #echo $ex->getMessage();
+        }
     }
 }
 
 #get/check previous comment in sql database
-$sql=mysql_query('SELECT * FROM komodo_comments where id="'.$commentid.'" and ct="'.$ct.'"');
-$oldnote=mysql_result($sql,0,'txt');
-$cid=mysql_result($sql,0,'cid');
+#$sql=mysql_query('SELECT * FROM komodo_comments where id="'.$commentid.'" and ct="'.$ct.'"');
+#$oldnote=mysql_result($sql,0,'txt');
+#$cid=mysql_result($sql,0,'cid');
+ try {
+    $stmt3 ->execute();
+    $check = $stmt3->fetchAll(PDO::FETCH_ASSOC);
+} catch(PDOException $ex) {
+  #echo $ex->getMessage();
+}
+
+$oldnote=$check[0]['txt'];
+$cid=$check[0]['cid'];
 foreach($matches_tags[1] as $match){
-    mysql_query("INSERT INTO komodo_comments_tags (ct,cid,txt) VALUES('$ct','$cid','$match');");
+     try {
+        $stmt7->execute();
+       } catch(PDOException $ex) {
+          #echo $ex->getMessage();
+       }
+    #mysql_query("INSERT INTO komodo_comments_tags (ct,cid,txt) VALUES('$ct','$cid','$match');");
 }
 
 if(!isset($rmnote)&&!isset($index)){
     if(empty($comment)){ #toggle note on
         echo $toadd."☺$commentid $oldnote"."☻";
     }else{#put note into sql database
-        if(empty($oldnote)){mysql_query("INSERT INTO komodo_comments (txt,ct,id) VALUES('$comment','$ct','$commentid')");}
-        else{mysql_query("update komodo_comments set txt='$comment' where id='$commentid' and ct='$ct'");}
+        if(empty($oldnote)){
+            try {
+                    $stmt4 ->execute();
+                } catch(PDOException $ex) {
+                  #echo $ex->getMessage();
+                }
+            #mysql_query("INSERT INTO komodo_comments (txt,ct,id) VALUES('$comment','$ct','$commentid')");
+        }
+        else{
+            try {
+                    $stmt5 ->execute();
+                } catch(PDOException $ex) {
+                  #echo $ex->getMessage();
+                }
+            #mysql_query("update komodo_comments set txt='$comment' where id='$commentid' and ct='$ct'");
+        }
         echo $toadd."☺$commentid ☻"; #toggle note off
     }
 }else{
-    mysql_query("delete from komodo_comments where id='$rmnote' and ct='$ct'");
+    #mysql_query("delete from komodo_comments where id='$rmnote' and ct='$ct'");
+    try {
+            $stmt6 ->execute();
+        } catch(PDOException $ex) {
+          #echo $ex->getMessage();
+        }
 }
-mysql_close($link);
+unset($db);
+#mysql_close($link);
 
 }
 ?>
