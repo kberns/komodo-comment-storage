@@ -138,14 +138,11 @@ if(isset($con)or isset($coff)){
     $q->bindParam(2, $myidkey);
     $q->execute();
     $check = $q->fetchAll(PDO::FETCH_ASSOC);
-    #$sql=mysql_query('SELECT * FROM komodo_comments_settings where apicode="'.$myapikey.'" and uniid="'.$myidkey.'";');
-    #$codecheck=mysql_result($sql,0,'apicode');$numcheck=mysql_result($sql,0,'num');
+
     $codecheck=$check[0]['apicode'];$numcheck=$check[0]['num'];
-    if(empty($codecheck)){unset($db);die('access denied');}#mysql_close($link);
-    else{
-       #$ct=mysql_result($sql,0,'ct');
-       $ct=$check[0]['ct'];
-    }
+    if(empty($codecheck)){unset($db);die('access denied');}
+    else{$ct=$check[0]['ct'];}
+    
     $stmt = $db->prepare("INSERT INTO komodo_comments_files (fid,file,filetype) VALUES (?,?,1) ON DUPLICATE KEY UPDATE file=?,filetype=1;");
     $stmt->bindParam(1, $theid);
     $stmt->bindParam(2, $thefile);
@@ -185,7 +182,6 @@ if(isset($con)or isset($coff)){
         if(!empty($thefile)){
             
             $stmt->execute();
-            #mysql_query("INSERT INTO komodo_comments_files (fid,file,filetype) VALUES ('$theid','$thefile',1) ON DUPLICATE KEY UPDATE file='$thefile',filetype=1;");
             $loadedfile=file_get_contents($thefile);
             #$loadedfile=str_replace('\n','\\n',$loadedfile);
             preg_match_all($re, $loadedfile, $matches_comments);
@@ -210,7 +206,6 @@ if(isset($con)or isset($coff)){
                         } catch(PDOException $ex) {
                           #echo $ex->getMessage();
                         }
-                        #mysql_query("update komodo_comments_settings set num=$num where apicode='$apikey' and uniid='$myidkey'");
                     }
                 }
                 try {
@@ -222,15 +217,12 @@ if(isset($con)or isset($coff)){
                 
                 $oldnote=$check[0]['txt'];
                 $cid=$check[0]['cid'];
-                #$sql=mysql_query('SELECT * FROM komodo_comments where id="'.$commentid.'" and ct="'.$ct.'"');
-                #$oldnote=mysql_result($sql,0,'txt');
-                #$cid=mysql_result($sql,0,'cid');
-                
+
                 if(!isset($rmnote)&&!isset($index)){
                     if(empty($comment)or isset($con)){ #toggle note on
                         $loadedfile=str_ireplace($tochange,$toadd."☺$commentid $oldnote"."☻",$loadedfile);
                     }elseif(!empty($comment)&&isset($coff)){#put note into sql database
-                        if(empty($oldnote)){#mysql_query("INSERT INTO komodo_comments (txt,ct,id) VALUES('$comment','$ct','$commentid')");
+                        if(empty($oldnote)){
                             try {
                                 $stmt4 ->execute();
                             } catch(PDOException $ex) {
@@ -243,8 +235,7 @@ if(isset($con)or isset($coff)){
                             } catch(PDOException $ex) {
                               #echo $ex->getMessage();
                             }
-                            #mysql_query("update komodo_comments set txt='$comment' where id='$commentid' and ct='$ct'");
-                            }
+                        }
                         $loadedfile=str_ireplace($tochange,$toadd."☺$commentid ☻",$loadedfile);#toggle note off
                     }
                 }else{
@@ -253,18 +244,15 @@ if(isset($con)or isset($coff)){
                     } catch(PDOException $ex) {
                       #echo $ex->getMessage();
                     }
-                    #mysql_query("delete from komodo_comments where id='$rmnote' and ct='$ct'");
                     $loadedfile=str_ireplace($tochange,"",$loadedfile);unset($rmnote,$index);
                 }
                 if(isset($foundtag)){
                     foreach($matches_tags[1] as $matchtag){
                         try {
-                             $stmt7->execute();
-                            } catch(PDOException $ex) {
-                               #echo $ex->getMessage();
-                            }
-                       
-                        #mysql_query("INSERT INTO komodo_comments_tags (ct,cid,txt) VALUES('$ct','$cid','$matchtag');");
+                            $stmt7->execute();
+                        } catch(PDOException $ex) {
+                           #echo $ex->getMessage();
+                        }
                     }unset($foundtag);
                 }
             }
@@ -273,7 +261,6 @@ if(isset($con)or isset($coff)){
         }
     }
 }
-#mysql_close($link);
 unset($db);
 #php code is released under gpl
 echo'<div>Active node: <span id="echoActive">-</span></div>
