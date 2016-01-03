@@ -62,7 +62,7 @@ echo'<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/htm
     <ul>';
 #following php code is released under gpl
 #copyright Kristoffer Bernssen
-#error_reporting(0);
+error_reporting(0);
 $fileids=array();$dirids=array();
 function filedirs($dirstart,$level) {
     global $fileids,$dirids;
