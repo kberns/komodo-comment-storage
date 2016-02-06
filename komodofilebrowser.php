@@ -19,105 +19,155 @@ echo'<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/htm
   <meta http-equiv="content-type" content="text/html; charset=ISO-8859-1">
   <title>Komodo File Comment and Tags Toggler</title>
 
-  <script src="ext/dynatree-master/jquery/jquery.js" type="text/javascript"></script>
-  <script src="ext/dynatree-master/jquery/jquery-ui.custom.js" type="text/javascript"></script>
-  <script src="ext/dynatree-master/jquery/jquery.cookie.js" type="text/javascript"></script>
+  <script src="//code.jquery.com/jquery-1.11.3.min.js" type="text/javascript"></script>
+  <script src="//code.jquery.com/ui/1.11.4/jquery-ui.min.js" type="text/javascript"></script>
+  <script src="//cdnjs.cloudflare.com/ajax/libs/js-cookie/2.0.1/js.cookie.min.js"></script>
 
-  <link href="ext/dynatree-master/src/skin/ui.dynatree.css" rel="stylesheet" type="text/css">
-  <script src="ext/dynatree-master/src/jquery.dynatree.js" type="text/javascript"></script>
-
+  <link href="ext/fancytree-master/src/skin-win7/ui.fancytree.css" rel="stylesheet" type="text/css">
+  <script src="ext/fancytree-master/src/jquery.fancytree.js" type="text/javascript"></script>
+  <script src="ext/fancytree-master/src/jquery.fancytree.persist.js" type="text/javascript"></script>
   <!-- (Irrelevant source removed.) -->
+<!-- (Irrelevant source removed.) -->
+
+<style type="text/css">
+</style>
 
 <script type="text/javascript">
-  $(function(){
-    $("#tree").dynatree({
-      persist: true,
-      checkbox: true,
-      selectMode: 3,
-      onPostInit: function(isReloading, isError) {
-         logMsg("onPostInit(%o, %o)", isReloading, isError);
-         // Re-fire onActivate, so the text is update
-         this.reactivate();
-      },
-      onActivate: function(node) {
-        $("#echoActive").text(node.data.title);
-      },
-      onDeactivate: function(node) {
-        $("#echoActive").text("-");
-      },
-      onDblClick: function(node, event) {
-        logMsg("onDblClick(%o, %o)", node, event);
-        node.toggleExpand();
-      }
-    });
-  });
-</script>
-</head>
+  var treeData = [';
 
-<body class="example">
-
-  <!-- Tree container -->
-  <div id="tree">
-  
-    <ul>';
 #following php code is released under gpl
 #copyright Kristoffer Bernssen
-error_reporting(0);
-$fileids=array();$dirids=array();
-function filedirs($dirstart,$level) {
-    global $fileids,$dirids;
+
+if(isset($_POST['filetype'])){$checkfiletype=$_POST['filetype'];}
+if(empty($checkfiletype)){$checkfiletype='php';}
+if(isset($_POST['tomatch'])){$matchdata=$_POST['tomatch'];}
+if(empty($matchdata)){$matchdata='mysql_query';}
+error_reporting(0);$uniq=1;
+$fileids=array();$dirids=array();$node=array();#$foldernode=array();
+function filedirs($dirstart,$level,$theidparent) {
+    $theidparent2=$theidparent;$level2=$level;$dirstart2=$dirstart;
+    global $fileids,$dirids,$node,$uniq,$checkfiletype;#,$foldernode;
     $i=1;
-    if($dirstart!=='.'){$dirextra="$dirstart/";}else{$rootfolder=1;}
-    if ($handle = opendir($dirstart)) {
-        ++$level;
+    if($dirstart2!=='.'){$dirextra="$dirstart2/";}
+    if($level2==0){$rootfolder=1;}
+ if ($handle = opendir($dirstart2)) {
+        ++$level2;
     $dirs=array();$diri=0;
     $files=array();$filei=0;
     while (false != ($entry = readdir($handle))) {
       if ($entry != "." && $entry != "..") {
-          if (is_dir($dirextra.$entry) === true){
+          if(filetype($dirextra.$entry)=="dir"){
               $dirs[$diri]=$entry;++$diri;$thefile="";
-          }else{
+          }elseif($entry!=='config.inc.php'){
             preg_match('/\.([^\.]*)$/i',$entry,$match);
             $thefile=$match[1];
-          }
-          if($thefile=='php'){
-              $files[$filei]=$dirextra.$entry;++$filei;
-          }
+            if($thefile==$checkfiletype){
+                $files[$filei]=$dirextra.$entry;++$filei;$thefile="";
+            }
+         }
       }
     }
+    $i2=0;
+    $n=count($dirs);
+    $nm=$n -1;
+    $nf=count($files);
+    $nfm=$nf -1;
     foreach($dirs as $dirpart){
-        $theid="id$level.$i";
-        echo "<li id='$theid' class='folder'>$dirpart<ul>\n";
-        ++$i;
-        if($dirstart != "."){$newdir=$dirstart.'/'.$dirpart;}
-        else{$newdir=$dirpart;}
-        
-        $dirids[$theid]=$newdir.$dirpart;
-        filedirs($newdir,$level);
-        echo'</ul>';
-    }
-    if(isset($rootfolder)){echo "<li id='id$level.$i' class='folder expanded'>ROOT_FOLDER<ul>\n";}
+        $diddir=1;
+        if(!empty($dirpart)){
+            $theid="id-$level2-$i-$uniq";++$uniq;
+            if($dirstart2 != "."){$newdir=$dirstart2.'/'.$dirpart;}
+            else{$newdir=$dirpart;}
+            
+            $dirids[$theid]=$newdir;
+            if($i2!==0){echo",\n";}
+            #echo str_repeat("\t",$level);
+            echo "{folder: true, key:\"$theid\"";
+            $i3=0;
+            if ($handle2 = opendir($newdir)) {
+                while (false != ($entry2 = readdir($handle2))) {
+                    if ($entry2 != "." && $entry2 != "..") {
+                        if (filetype($newdir.'/'.$entry2)=="dir"){
+                            $found1=1;++$i3;
+                        }else{
+                          preg_match('/\.([^\.]*)$/i',$entry2,$match);
+                          $thefile=$match[1];
+                        }
+                        if($thefile=='php'){$found1=1;++$i3;}
+                    }
+                }
+            }
+            if(isset($found1)){
+               
+                echo", title:\"$dirpart *$i3\", children: [\n";
+                    filedirs($newdir,$level2,$theid);
+                    echo"]}";unset($found1);$found2=1;
+            }else{echo", title: \"$dirpart\"}";}
+            ++$i;++$i2;
+            }
+        }
+         
+    
+    if(isset($rootfolder)){
+        $theid="id-$level2-$i-$uniq";++$uniq;++$i;$theidparent2=$theid;
+        $dirids[$theid]='.';
+        echo ",\n{folder: true,title: \"RootFolder\", key:\"$theid\"";
+        if($nf>0){echo", children: [\n";$closeroot=1;}else{echo"}";}
+    }elseif(($i2>0)&&($nf>0)&&isset($diddir)){echo",\n";}
+    elseif(isset($found2)){unset($found2);echo",\n";}
+    $i2=0;
     foreach($files as $filepart){
-        $theid="id$level.$i";
+        if(!empty($filepart)){
+        $theid="id-$level2-$i-$uniq";++$uniq;
+        if(!empty($theidparent2)){
+            if(!empty($node[$theidparent2])){$node[$theidparent2].=','.$theid;}
+            else{$node[$theidparent2]=$theid;}
+         }
         $fileids[$theid]=$filepart;
         preg_match('/([^\/]*)$/i',$filepart,$match);
-        echo "<li id='$theid'>".$match[1]."\n";
-        ++$i;
-    }
-    if(isset($rootfolder)){echo'</ul>';}
-    closedir($handle);
-    }
-}
-filedirs(".",0) ;
+        if($i2!==0){echo",\n";}
+        echo "{title: \"$match[1]\", key:\"$theid\"}";
+        ++$i;++$i2;
+        }
+    }if(isset($diddir)){unset($diddir);}
+      if(isset($closeroot)){echo"]}";unset($closeroot);}
+ }
 
+    closedir($handle);
+    
+}
+filedirs(".",0,"") ;
 $rand=rand();
-echo'</ul>
-  </div><div class="dynatree-drag-helper">
-  <a href="?con&r='.$rand.'">Turn Comments On</a> 
-  <a href="?coff&r='.$rand.'">Turn Comments Off</a>';
-if(isset($_GET['coff'])){$coff=1;}
-elseif(isset($_GET['con'])){$con=1;}
-if(isset($con)or isset($coff)){
+echo' ];
+</script>';
+if(isset($_POST['coff'])){$coff=1;}
+elseif(isset($_POST['to'])){$con=1;}
+if(!empty($coff.$con)){
+    $nodesids=$_POST['ft_1'];$i=0;
+    #echo "<pre>".print_r($nodesids)."</pre><br>";
+     # $node[$theid]=$theid,$theid2.. $fileids[$theid] $dirids[$theid]
+    
+    $didarray=array();
+     function checkiffolder($nodetmp) {
+        global $i,$node,$dirids,$didarray;
+        $thefilesidstmp=array();
+        foreach($nodetmp as $theidtmp){
+            if(!empty($dirids[$theidtmp])){
+                $node_a=explode(',',$node[$theidtmp]);
+                #echo $theidtmp.'<br>'.$node[$theidtmp].'<br>';
+                if(empty($didarray[$theidtmp])){
+                    $didarray[$theidtmp]=1;$tmp_a=checkiffolder($node_a);
+                    if(!empty($tmp_a)){$thefilesidstmp=array_merge($thefilesidstmp,$tmp_a);}
+                }
+                
+            }else{
+                $thefilesidstmp[$i]=$theidtmp;++$i;
+            }
+        }
+        return($thefilesidstmp);
+     }
+    $thefilesids=checkiffolder($nodesids);
+    #echo "<pre>".print_r($node['id2.1'])."</pre><br>";
     $securityforkomodo=1;require('komodo.php');
     #create sql table if missing
     $q2 = $db->prepare('select cid from komodo_comments LIMIT 2');
@@ -127,8 +177,6 @@ if(isset($con)or isset($coff)){
     #$val = mysql_query('select cid from komodo_comments LIMIT 1');
     if($val === FALSE){require('komodocomments.db.php');}
 
-    $thefilesids=$_COOKIE['dynatree-select'];
-    $thefilesids_a=explode(',',$thefilesids);
     $securityforkomodo=1;
     $re = '/\x{263A}(\S*)\s?([^\x{263B}\x{263A}]*)\x{263B}/u'; 
     $re2 = '/\x{25d9}([^\x{25d8}]*)\x{25d8}/u';
@@ -176,8 +224,8 @@ if(isset($con)or isset($coff)){
     $stmt7->bindParam(2, $cid);
     $stmt7->bindParam(3, $matchtag);
     
-    
-    foreach($thefilesids_a as $theid){
+    foreach($thefilesids as $theid){
+
         $thefile=$fileids[$theid];
         if(!empty($thefile)){
             
@@ -219,7 +267,7 @@ if(isset($con)or isset($coff)){
                 $cid=$check[0]['cid'];
 
                 if(!isset($rmnote)&&!isset($index)){
-                    if(empty($comment)or isset($con)){ #toggle note on
+                    if(isset($con)){ #toggle note on
                         $loadedfile=str_ireplace($tochange,$toadd."☺$commentid $oldnote"."☻",$loadedfile);
                     }elseif(!empty($comment)&&isset($coff)){#put note into sql database
                         if(empty($oldnote)){
@@ -262,20 +310,110 @@ if(isset($con)or isset($coff)){
     }
 }
 unset($db);
-#php code is released under gpl
-echo'<div>Active node: <span id="echoActive">-</span></div>
-<p class="description">
-    Cookie persistence is enabled here.<br>
-    Also, double-click handler expands document nodes.<br>
-    Select a node and hit [F5] to refresh, to see how the active node and
-    expansion and selection states are restored.<br>
-    <br>
-    NOTE: if this doesn\'t seem to work, it\'s probably because the frame
-    content is cached by the browser.<br>
-    Try this example as an
-    <a href="#" target="_blank">unframed page</a>.
+
+# end of php code released under gpl
+echo'<script type="text/javascript">
+  $(function(){
+
+
+    $("#tree3").fancytree({
+    //      extensions: ["select"],
+    extensions: ["persist"], 
+    checkbox: true,
+    persist: {
+      // Available options with their default:
+      cookieDelimiter: "~",    // character used to join key strings
+      cookiePrefix: undefined, // \'fancytree-<treeId>-\' by default
+      cookie: { // settings passed to jquery.cookie plugin
+        raw: false,
+        expires: "",
+        path: "",
+        domain: "",
+        secure: false
+       // expandLazy: true, // true: recursively expand and load lazy nodes
+        //overrideSource: true,  // true: cookie takes precedence over `source` data attributes.
+    },
+    expandLazy: false, // true: recursively expand and load lazy nodes
+    overrideSource: true,  // true: cookie takes precedence over `source` data attributes.
+    store: "auto",     // \'cookie\': use cookie, \'local\': use localStore, \'session\': use sessionStore
+    types: "active expanded focus selected"  // which status types to store
+   },
+
+      selectMode: 3,
+      source: treeData,
+      lazyLoad: function(event, ctx) {
+        ctx.result = {url: "ajax-sub2.json", debugDelay: 1000};
+      },
+      loadChildren: function(event, ctx) {
+        ctx.node.fixSelection3AfterClick();
+      },
+      select: function(event, data) {
+        // Get a list of all selected nodes, and convert to a key array:
+        var selKeys = $.map(data.tree.getSelectedNodes(), function(node){
+          return node.key;
+        });
+        $("#echoSelection3").text(selKeys.join(", "));
+
+        // Get a list of all selected TOP nodes
+        var selRootNodes = data.tree.getSelectedNodes(true);
+        // ... and convert to a key array:
+        var selRootKeys = $.map(selRootNodes, function(node){
+          return node.key;
+        });
+        $("#echoSelectionRootKeys3").text(selRootKeys.join(", "));
+        $("#echoSelectionRoots3").text(selRootNodes.join(", "));
+      },
+      dblclick: function(event, data) {
+        data.node.toggleSelected();
+      },
+      keydown: function(event, data) {
+        if( event.which === 32 ) {
+          data.node.toggleSelected();
+          return false;
+        }
+      },
+      // The following options are only required, if we have more than one tree on one page:
+    //  initId: "treeData",
+      cookieId: "fancytree-Cb3",
+      idPrefix: "fancytree-Cb3-"
+    });
+
+ $("form").submit(function() {
+      // Render hidden <input> elements for active and selected nodes
+      $("#tree3").fancytree("getTree").generateFormElements();
+      //alert("POST data:\n" + jQuery.param($(this).serializeArray()));
+      //return false; // return false to prevent submission of this sample
+    });
+});
+  
+
+</script>
+</head>
+
+<body class="example">
+
+
+  <p class="description">
+    This tree has <b>checkoxes and selectMode 3 (hierarchical multi-selection)</b> enabled.<br>
+    A double-click handler selects the node.<br>
+    A keydown handler selects on [space].
   </p>
-  <!-- (Irrelevant source removed.) -->
+  
+  
+  <form action="" method="POST">
+  <input type="submit" name="to" value="Toggle comments on">
+  <input type="submit" name="coff" value="Toggle comments off">
+  <fieldset>
+      <legend>Select 1</legend>
+      <div id="tree3" name="selNodes">
+      </div>
+    </fieldset><br>
+
+  </form>
+  <div>Selected keys: <span id="echoSelection3">-</span></div>
+  <div>Selected root keys: <span id="echoSelectionRootKeys3">-</span></div>
+  <div>Selected root nodes: <span id="echoSelectionRoots3">-</span></div>
+  <div>Active node: <span id="echoActive">-</span></div>
 </body>
 </html>';
 
